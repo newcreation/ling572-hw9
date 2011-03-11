@@ -41,16 +41,20 @@ def train(vectors, labels, all_features, min_gain):
     rule_list = []
 
     rules_gain = get_gain(expected, vectors, labels)
-    best_gain = rules_gain[2]
+    best_gain_rule = max(rules_gain.iteritems(), key=operator.itemgetter(1))[0]
+    best_gain = rules_gain[best_gain_rule]
     while best_gain >= min_gain:
-        rule_list.append((rules_gain[1], rules_gain[2]))
-        expected = apply_rule(rules_gain[1], expected, vectors)
+##        rule_list.append((rules_gain[1], rules_gain[2]))
+        rule_list.append((best_gain_rule, best_gain))
+        expected = apply_rule(best_gain_rule, expected, vectors)
         rules_gain = get_gain(expected, vectors, labels)
-        best_gain = rules_gain[2]
+        best_gain_rule = max(rules_gain.iteritems(), key=operator.itemgetter(1))[0]
+        best_gain = rules_gain[best_gain_rule]
 
     return rule_list
 
 def apply_rule(rule, expected, vectors):
+    rule = rule.split()
     feature_present = rule[0]
     from_class = rule[1]
     to_class = rule[2]
@@ -71,40 +75,46 @@ def get_gain(expected, vectors, labels):
         for feature in vectors[vector]:
             if feature == "_label_":
                 continue
-            if feature not in rules:
-                rules[feature] = {}
-            if from_label not in rules[feature]:
-                rules[feature][from_label] = {}
+            key_str = feature + " " + from_label
+#            if feature not in rules:
+#                rules[feature] = {}
+#            if from_label not in rules[feature]:
+#                rules[feature][from_label] = {}
 
             for label in labels:
+                if from_label == label:
+                    continue
                 # formulate a rule going from expected[vector] to label
                 # if feature is present in vector
-                if label not in rules[feature][from_label]:
-                    rules[feature][from_label][label] = 0
+                label_key_str = key_str + " " + label
+                if label_key_str not in rules:
+                    rules[label_key_str] = 0
 
                 # in the case that we'd get a new correct result
                 if label == gold_label and from_label != gold_label:
-                    rules[feature][from_label][label] += 1
+                    rules[label_key_str] += 1
                 # in the case that we'd remove a correct result
                 elif label != gold_label and from_label == gold_label:
-                    rules[feature][from_label][label] -= 1
+                    rules[label_key_str] -= 1
 
                 # keep track of the best gain
-                if rules[feature][from_label][label] >= best_gain:
-                    best_gain = rules[feature][from_label][label]
-                    best_rule = [feature, from_label, label]
-    return [rules, best_rule, best_gain]
+#                if rules[feature][from_label][label] >= best_gain:
+#                    best_gain = rules[feature][from_label][label]
+#                    best_rule = [feature, from_label, label]
+    return rules
 
 def print_model(model_filename, rule_list, init_label):
     model_file = open(model_filename, 'w')
     model_file.write(init_label + "\n")
-    for rule_gain in rule_list:
-        feature = rule_gain[0][0]
-        from_label = rule_gain[0][1]
-        to_label = rule_gain[0][2]
-        gain = rule_gain[1]
-        model_file.write(feature + " " + from_label + " " + to_label + " ")
-        model_file.write(str(gain) + "\n")
+    for rule in rule_list:
+        model_file.write(rule[0] + " ")
+        model_file.write(str(rule[1]) + "\n")
+#        feature = rule_gain[0][0]
+#        from_label = rule_gain[0][1]
+#        to_label = rule_gain[0][2]
+#        gain = rule_gain[1]
+#        model_file.write(feature + " " + from_label + " " + to_label + " ")
+#        model_file.write(str(gain) + "\n")
 
 ############# main
 #arguments
@@ -121,6 +131,7 @@ vectors = v_list[0]
 labels = v_list[1]
 all_features = v_list[2]
 
+# do training
 rule_list = train(vectors, labels, all_features, min_gain)
 print_model(model_filename, rule_list, "guns")
 
